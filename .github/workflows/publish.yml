@@ -4,6 +4,15 @@ on:
   release:
     types: [published]
   workflow_dispatch:  # Allows manual trigger
+    inputs:
+      target:
+        description: 'Deploy target'
+        required: true
+        default: 'testpypi'
+        type: choice
+        options:
+          - testpypi
+          - pypi
 
 jobs:
   build-and-publish:
@@ -26,22 +35,35 @@ jobs:
       run: python -m build
     
     - name: Check package
-      run: twine check dist/*
-    
-    # Optional: Test on TestPyPI first
-    - name: Publish to TestPyPI
-      if: github.event_name == 'workflow_dispatch'
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
       run: |
-        twine upload --repository testpypi dist/*
+        twine check dist/*
+        ls -la dist/
     
-    # Publish to real PyPI on release
+    # Publish to PyPI on release
     - name: Publish to PyPI
-      if: github.event_name == 'release'
+      if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi')
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
       run: |
+        if [ -z "$TWINE_PASSWORD" ]; then
+          echo "Error: PYPI_API_TOKEN secret is not set!"
+          echo "Please add your PyPI API token to repository secrets."
+          exit 1
+        fi
         twine upload dist/*
+    
+    # Test on TestPyPI (optional - only if token is set)
+    - name: Publish to TestPyPI
+      if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+      run: |
+        if [ -z "$TWINE_PASSWORD" ]; then
+          echo "Warning: TEST_PYPI_API_TOKEN not set, skipping TestPyPI upload."
+          echo "To use TestPyPI, add a TestPyPI API token to repository secrets."
+          echo "Get one from: https://test.pypi.org/manage/account/token/"
+          exit 0
+        fi
+        twine upload --repository testpypi dist/*
