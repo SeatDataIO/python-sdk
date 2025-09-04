@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "seatdata-sdk"
-version = "0.1.0"
+version = "0.1.1"
 description = "Official Python SDK for SeatData API"
 readme = "README.md"
 license = {text = "MIT"}
