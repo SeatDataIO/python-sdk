@@ -1,6 +1,6 @@
 # SeatData Python SDK
 
-[![PyPI version](https://badge.fury.io/py/seatdata-sdk.svg)](https://badge.fury.io/py/seatdata-sdk)
+[![PyPI version](https://img.shields.io/pypi/v/seatdata-sdk.svg)](https://pypi.org/project/seatdata-sdk/)
 [![Tests](https://github.com/SeatDataIO/python-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/SeatDataIO/python-sdk/actions/workflows/test.yml)
 [![Python Support](https://img.shields.io/pypi/pyversions/seatdata-sdk)](https://pypi.org/project/seatdata-sdk/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
