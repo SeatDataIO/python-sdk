@@ -14,7 +14,7 @@ class SeatDataClient:
         self._api_key = api_key
         self.timeout = timeout
         self.session = requests.Session()
-        self.session.headers.update({"api-key": api_key, "User-Agent": "SeatData-Python-SDK/0.1.0"})
+        self.session.headers.update({"api-key": api_key, "User-Agent": "SeatData-Python-SDK/0.2.0"})
 
     def _make_request(
         self,
@@ -36,8 +36,11 @@ class SeatDataClient:
                 raise RateLimitError("Rate limit exceeded")
             elif response.status_code == 400:
                 raise SeatDataException(f"Bad request: {response.text}")
+            elif response.status_code == 404:
+                raise SeatDataException(f"Not found: {response.text}")
 
-            response.raise_for_status()
+            if response.status_code not in [200, 202]:
+                response.raise_for_status()
 
             return response.json()
 
@@ -108,6 +111,32 @@ class SeatDataClient:
             return cast(List[Dict[str, Any]], response["items"])
 
         return cast(List[Dict[str, Any]], response)
+
+    def event_request_add(self, search_query: str) -> Dict[str, Any]:
+        if not search_query:
+            raise ValueError("search_query must be provided")
+
+        data = {"search_query": search_query}
+
+        response = self._make_request("POST", "/v0.4/events/event-request-add", json_data=data)
+
+        if response is None:
+            raise SeatDataException("Empty response from API")
+
+        return cast(Dict[str, Any], response)
+
+    def event_request_status(self, job_id: str) -> Dict[str, Any]:
+        if not job_id:
+            raise ValueError("job_id must be provided")
+
+        endpoint = f"/v0.4/events/event-request-status/{job_id}/"
+
+        response = self._make_request("GET", endpoint)
+
+        if response is None:
+            raise SeatDataException("Empty response from API")
+
+        return cast(Dict[str, Any], response)
 
     def close(self):
         self.session.close()

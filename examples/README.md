@@ -27,6 +27,28 @@ Run it with:
 python basic_usage.py
 ```
 
+### async_event_request.py
+Shows how to use the async event request API:
+- Submit an event add request
+- Poll for job completion
+- Retrieve the final result
+
+Run it with:
+```bash
+python async_event_request.py
+```
+
+### batch_event_requests.py
+Demonstrates submitting multiple event requests:
+- Submit multiple event add requests
+- Track multiple job IDs
+- Check status of all jobs
+
+Run it with:
+```bash
+python batch_event_requests.py
+```
+
 ## Getting an API Key
 
 Contact support@seatdata.io to obtain an API key for the SeatData API.

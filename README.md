@@ -32,6 +32,14 @@ sales_data = client.get_sales_data(event_id="1234567")
 
 # Get current listings
 listings = client.get_listings(event_id="1234567")
+
+# Submit async event request (v0.2.0+)
+result = client.event_request_add(search_query="Taylor Swift")
+job_id = result["job_id"]
+
+# Check job status
+status = client.event_request_status(job_id=job_id)
+print(f"Status: {status['status']}")
 ```
 
 ## API Key
