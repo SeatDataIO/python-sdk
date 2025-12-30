@@ -40,6 +40,10 @@ job_id = result["job_id"]
 # Check job status
 status = client.event_request_status(job_id=job_id)
 print(f"Status: {status['status']}")
+
+# Download daily event CSV (v0.3.0+)
+csv_content = client.download_daily_csv()  # Latest available
+csv_content = client.download_daily_csv(date="20251225")  # Specific date
 ```
 
 ## API Key

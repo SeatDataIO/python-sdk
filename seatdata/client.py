@@ -1,7 +1,14 @@
 from typing import Dict, Any, Optional, List, cast
 import requests
 
-from .exceptions import SeatDataException, AuthenticationError, RateLimitError
+from .exceptions import (
+    SeatDataException,
+    AuthenticationError,
+    RateLimitError,
+    SubscriptionError,
+    NotFoundError,
+    ServiceUnavailableError,
+)
 
 
 class SeatDataClient:
@@ -14,7 +21,7 @@ class SeatDataClient:
         self._api_key = api_key
         self.timeout = timeout
         self.session = requests.Session()
-        self.session.headers.update({"api-key": api_key, "User-Agent": "SeatData-Python-SDK/0.2.0"})
+        self.session.headers.update({"api-key": api_key, "User-Agent": "SeatData-Python-SDK/0.3.0"})
 
     def _make_request(
         self,
@@ -137,6 +144,62 @@ class SeatDataClient:
             raise SeatDataException("Empty response from API")
 
         return cast(Dict[str, Any], response)
+
+    def download_daily_csv(self, date: Optional[str] = None) -> str:
+        url = self.BASE_URL + "/v0.5/daily-csv/download"
+        params = {}
+        if date:
+            params["date"] = date
+
+        try:
+            response = self.session.request(
+                method="GET", url=url, params=params, timeout=self.timeout
+            )
+
+            if response.status_code == 200:
+                return response.text
+
+            if response.status_code == 400:
+                raise SeatDataException(f"Bad request: {response.text}")
+            elif response.status_code == 401:
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get("error", "")
+                    if "subscription" in error_msg.lower():
+                        raise SubscriptionError(error_msg)
+                except (ValueError, KeyError):
+                    pass
+                raise AuthenticationError("Invalid API key")
+            elif response.status_code == 404:
+                try:
+                    error_data = response.json()
+                    raise NotFoundError(error_data.get("error", "CSV file not found"))
+                except ValueError:
+                    raise NotFoundError("CSV file not found")
+            elif response.status_code == 429:
+                try:
+                    error_data = response.json()
+                    retry_after = error_data.get("retry_after", "")
+                    raise RateLimitError(
+                        f"{error_data.get('error', 'Rate limit exceeded')}"
+                        + (f" (retry after {retry_after}s)" if retry_after else "")
+                    )
+                except ValueError:
+                    raise RateLimitError("Rate limit exceeded")
+            elif response.status_code == 503:
+                try:
+                    error_data = response.json()
+                    raise ServiceUnavailableError(
+                        error_data.get("error", "Service temporarily unavailable")
+                    )
+                except ValueError:
+                    raise ServiceUnavailableError("Service temporarily unavailable")
+
+            response.raise_for_status()
+            return response.text
+
+        except requests.exceptions.RequestException as e:
+            raise SeatDataException(f"Request failed: {str(e)}")
 
     def close(self):
         self.session.close()

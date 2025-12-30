@@ -8,3 +8,15 @@ class AuthenticationError(SeatDataException):
 
 class RateLimitError(SeatDataException):
     pass
+
+
+class SubscriptionError(SeatDataException):
+    pass
+
+
+class NotFoundError(SeatDataException):
+    pass
+
+
+class ServiceUnavailableError(SeatDataException):
+    pass

@@ -53,6 +53,18 @@ def main():
         else:
             print("No events found to get sales/listing data")
 
+        print("\n=== Downloading Daily Event CSV ===")
+        try:
+            csv_content = client.download_daily_csv()
+            lines = csv_content.strip().split("\n")
+            print(f"Downloaded CSV with {len(lines)} lines (including header)")
+            if lines:
+                print(f"Header: {lines[0]}")
+                if len(lines) > 1:
+                    print(f"First row: {lines[1]}")
+        except Exception as e:
+            print(f"Error downloading CSV: {e}")
+
 
 if __name__ == "__main__":
     main()
