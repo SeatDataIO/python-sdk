@@ -72,12 +72,17 @@ _ERROR_TYPE_MAP = {
 
 
 def _parse_error_body(response: "httpx.Response") -> Dict[str, Any]:
+    fallback_type = {
+        401: "authentication_error",
+        404: "not_found",
+        429: "rate_limit_error",
+    }.get(response.status_code, "server_error")
     try:
         body = response.json()
     except Exception:
         return {
             "error": {
-                "type": "rate_limit_error" if response.status_code == 429 else "server_error",
+                "type": fallback_type,
                 "code": "non_json_response",
                 "message": response.text or response.reason_phrase or "",
             }
@@ -85,7 +90,7 @@ def _parse_error_body(response: "httpx.Response") -> Dict[str, Any]:
     if not isinstance(body, dict) or "error" not in body or not isinstance(body["error"], dict):
         return {
             "error": {
-                "type": "rate_limit_error" if response.status_code == 429 else "server_error",
+                "type": fallback_type,
                 "code": "non_envelope_response",
                 "message": response.text or "",
             }
