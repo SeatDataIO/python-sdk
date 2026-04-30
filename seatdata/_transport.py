@@ -1,5 +1,6 @@
 import asyncio
 import random
+import threading
 import time
 from typing import Any, Dict, Optional
 
@@ -24,6 +25,7 @@ _RETRYABLE_NETWORK_EXCEPTIONS = (
 )
 _BACKOFF_BASE_SECONDS = 0.5
 _BACKOFF_CAP_SECONDS = 30.0
+_RETRY_AFTER_CAP_SECONDS = 60.0
 
 
 def _should_retry(response: Optional["httpx.Response"], exc: Optional[Exception]) -> bool:
@@ -39,7 +41,7 @@ def _sleep_seconds(response: Optional["httpx.Response"], attempt: int) -> float:
         retry_after = response.headers.get("Retry-After")
         if retry_after is not None:
             try:
-                return max(0, int(retry_after))
+                return min(_RETRY_AFTER_CAP_SECONDS, max(0, int(retry_after)))
             except ValueError:
                 pass
     return random.uniform(0, min(_BACKOFF_BASE_SECONDS * (2**attempt), _BACKOFF_CAP_SECONDS))
@@ -166,6 +168,7 @@ class _Transport:
             },
         )
         self._async_client: Optional[httpx.AsyncClient] = None
+        self._async_client_lock = threading.Lock()
 
     def request_json(
         self,
@@ -187,7 +190,7 @@ class _Transport:
                 if retry_safe and attempt < attempts - 1:
                     time.sleep(_sleep_seconds(None, attempt))
                     continue
-                raise SeatDataServerError(str(e), error_type="server_error")
+                raise SeatDataServerError(str(e), error_type="server_error") from e
             last_response = response
             if response.status_code < 400:
                 return response.json()
@@ -218,7 +221,7 @@ class _Transport:
                 if retry_safe and attempt < attempts - 1:
                     time.sleep(_sleep_seconds(None, attempt))
                     continue
-                raise SeatDataServerError(str(e), error_type="server_error")
+                raise SeatDataServerError(str(e), error_type="server_error") from e
             last_response = response
             if response.status_code < 400:
                 return response.text
@@ -234,15 +237,16 @@ class _Transport:
         self._client.close()
 
     def _ensure_async_client(self) -> httpx.AsyncClient:
-        if self._async_client is None:
-            self._async_client = httpx.AsyncClient(
-                timeout=self._timeout,
-                headers={
-                    "Authorization": f"Bearer {self._api_key}",
-                    "User-Agent": _user_agent(),
-                },
-            )
-        return self._async_client
+        with self._async_client_lock:
+            if self._async_client is None:
+                self._async_client = httpx.AsyncClient(
+                    timeout=self._timeout,
+                    headers={
+                        "Authorization": f"Bearer {self._api_key}",
+                        "User-Agent": _user_agent(),
+                    },
+                )
+            return self._async_client
 
     async def arequest_json(
         self,
@@ -265,7 +269,7 @@ class _Transport:
                 if retry_safe and attempt < attempts - 1:
                     await asyncio.sleep(_sleep_seconds(None, attempt))
                     continue
-                raise SeatDataServerError(str(e), error_type="server_error")
+                raise SeatDataServerError(str(e), error_type="server_error") from e
             last_response = response
             if response.status_code < 400:
                 return response.json()
@@ -297,7 +301,7 @@ class _Transport:
                 if retry_safe and attempt < attempts - 1:
                     await asyncio.sleep(_sleep_seconds(None, attempt))
                     continue
-                raise SeatDataServerError(str(e), error_type="server_error")
+                raise SeatDataServerError(str(e), error_type="server_error") from e
             last_response = response
             if response.status_code < 400:
                 return response.text
