@@ -133,6 +133,20 @@ class _Transport:
             _raise_from_response(response)
         return response.json()
 
+    def request_text(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        retry_safe: bool = True,
+    ) -> str:
+        url = self._base_url + path
+        response = self._client.request(method, url, params=params)
+        if response.status_code >= 400:
+            _raise_from_response(response)
+        return response.text
+
     def close(self) -> None:
         self._client.close()
         if self._async_client is not None:

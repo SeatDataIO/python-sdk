@@ -229,3 +229,41 @@ class TestErrorMapping:
         with pytest.raises(SeatDataServerError) as exc_info:
             transport.request_json("GET", "/api/v1/x")
         assert "Bad Gateway" in exc_info.value.message
+
+
+@respx.mock
+def test_request_text_returns_body_on_2xx(transport):
+    csv = "a,b,c\n1,2,3"
+    respx.get("https://seatdata.io/api/v0.5/daily-csv/download").mock(
+        return_value=httpx.Response(200, text=csv)
+    )
+    result = transport.request_text("GET", "/api/v0.5/daily-csv/download")
+    assert result == csv
+
+
+@respx.mock
+def test_request_text_raises_typed_error_on_non_2xx(transport):
+    respx.get("https://seatdata.io/api/v0.5/daily-csv/download").mock(
+        return_value=httpx.Response(
+            401,
+            json={
+                "error": {
+                    "type": "subscription_required",
+                    "code": "no_csv_plan",
+                    "message": "Daily Event CSV subscription required",
+                }
+            },
+        )
+    )
+    with pytest.raises(SeatDataSubscriptionError, match="Daily Event CSV subscription required"):
+        transport.request_text("GET", "/api/v0.5/daily-csv/download")
+
+
+@respx.mock
+def test_request_text_handles_plain_text_error(transport):
+    respx.get("https://seatdata.io/api/v0.5/daily-csv/download").mock(
+        return_value=httpx.Response(400, text="Invalid date format")
+    )
+    with pytest.raises(SeatDataServerError) as exc_info:
+        transport.request_text("GET", "/api/v0.5/daily-csv/download")
+    assert "Invalid date format" in exc_info.value.message
