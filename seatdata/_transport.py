@@ -1,3 +1,4 @@
+import asyncio
 import random
 import time
 from typing import Any, Dict, Optional
@@ -231,5 +232,85 @@ class _Transport:
 
     def close(self) -> None:
         self._client.close()
+
+    def _ensure_async_client(self) -> httpx.AsyncClient:
+        if self._async_client is None:
+            self._async_client = httpx.AsyncClient(
+                timeout=self._timeout,
+                headers={
+                    "Authorization": f"Bearer {self._api_key}",
+                    "User-Agent": _user_agent(),
+                },
+            )
+        return self._async_client
+
+    async def arequest_json(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        json: Optional[Dict[str, Any]] = None,
+        retry_safe: bool = True,
+    ) -> Any:
+        client = self._ensure_async_client()
+        url = self._base_url + path
+        attempts = self._max_retries + 1 if retry_safe else 1
+        last_response: Optional[httpx.Response] = None
+        for attempt in range(attempts):
+            last_response = None
+            try:
+                response = await client.request(method, url, params=params, json=json)
+            except _RETRYABLE_NETWORK_EXCEPTIONS as e:
+                if retry_safe and attempt < attempts - 1:
+                    await asyncio.sleep(_sleep_seconds(None, attempt))
+                    continue
+                raise SeatDataServerError(str(e), error_type="server_error")
+            last_response = response
+            if response.status_code < 400:
+                return response.json()
+            if retry_safe and attempt < attempts - 1 and _should_retry(response, None):
+                await asyncio.sleep(_sleep_seconds(response, attempt))
+                continue
+            _raise_from_response(response)
+        if last_response is not None:
+            _raise_from_response(last_response)
+        raise SeatDataServerError("request failed without response", error_type="server_error")
+
+    async def arequest_text(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        retry_safe: bool = True,
+    ) -> str:
+        client = self._ensure_async_client()
+        url = self._base_url + path
+        attempts = self._max_retries + 1 if retry_safe else 1
+        last_response: Optional[httpx.Response] = None
+        for attempt in range(attempts):
+            last_response = None
+            try:
+                response = await client.request(method, url, params=params)
+            except _RETRYABLE_NETWORK_EXCEPTIONS as e:
+                if retry_safe and attempt < attempts - 1:
+                    await asyncio.sleep(_sleep_seconds(None, attempt))
+                    continue
+                raise SeatDataServerError(str(e), error_type="server_error")
+            last_response = response
+            if response.status_code < 400:
+                return response.text
+            if retry_safe and attempt < attempts - 1 and _should_retry(response, None):
+                await asyncio.sleep(_sleep_seconds(response, attempt))
+                continue
+            _raise_from_response(response)
+        if last_response is not None:
+            _raise_from_response(last_response)
+        raise SeatDataServerError("request failed without response", error_type="server_error")
+
+    async def aclose(self) -> None:
         if self._async_client is not None:
-            pass
+            await self._async_client.aclose()
+            self._async_client = None
+        self._client.close()

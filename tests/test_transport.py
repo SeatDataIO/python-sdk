@@ -370,3 +370,56 @@ class TestRetryBehavior:
             assert route.call_count == 2
         finally:
             t.close()
+
+
+class TestAsyncTransport:
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_arequest_json_returns_parsed_body(self):
+        t = _Transport(api_key="a" * 64, max_retries=0)
+        try:
+            respx.get("https://seatdata.io/api/v1/account").mock(
+                return_value=httpx.Response(200, json={"user_id": 1})
+            )
+            result = await t.arequest_json("GET", "/api/v1/account")
+            assert result == {"user_id": 1}
+        finally:
+            await t.aclose()
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_arequest_json_retries_on_429(self):
+        t = _Transport(api_key="a" * 64, max_retries=1)
+        try:
+            respx.get("https://seatdata.io/api/v1/x").mock(
+                side_effect=[
+                    httpx.Response(429, headers={"Retry-After": "0"}, json={
+                        "error": {"type": "rate_limit_error", "code": "x", "message": "x"}
+                    }),
+                    httpx.Response(200, json={"ok": True}),
+                ]
+            )
+            result = await t.arequest_json("GET", "/api/v1/x")
+            assert result == {"ok": True}
+        finally:
+            await t.aclose()
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_arequest_text_returns_body(self):
+        t = _Transport(api_key="a" * 64, max_retries=0)
+        try:
+            respx.get("https://seatdata.io/api/v0.5/daily-csv/download").mock(
+                return_value=httpx.Response(200, text="a,b\n1,2")
+            )
+            result = await t.arequest_text("GET", "/api/v0.5/daily-csv/download")
+            assert result == "a,b\n1,2"
+        finally:
+            await t.aclose()
+
+    def test_async_client_is_not_created_until_first_async_call(self):
+        t = _Transport(api_key="a" * 64)
+        try:
+            assert t._async_client is None
+        finally:
+            t.close()
