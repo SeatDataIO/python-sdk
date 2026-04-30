@@ -197,7 +197,7 @@ class TestSeatDataClient:
         )
         client = SeatDataClient(api_key="a" * 64)
 
-        with pytest.raises(AuthenticationError):
+        with pytest.raises(SubscriptionError, match="API subscription required"):
             client.download_daily_csv()
 
     @respx.mock
@@ -209,7 +209,7 @@ class TestSeatDataClient:
         )
         client = SeatDataClient(api_key="a" * 64)
 
-        with pytest.raises(AuthenticationError):
+        with pytest.raises(SubscriptionError, match="Daily Event CSV subscription required"):
             client.download_daily_csv()
 
     @respx.mock

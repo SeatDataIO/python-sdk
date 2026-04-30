@@ -87,6 +87,18 @@ def _parse_error_body(response: "httpx.Response") -> Dict[str, Any]:
                 "message": response.text or response.reason_phrase or "",
             }
         }
+    if isinstance(body, dict) and isinstance(body.get("error"), str):
+        legacy_message = body["error"]
+        legacy_type = fallback_type
+        if response.status_code == 401 and "subscription" in legacy_message.lower():
+            legacy_type = "subscription_required"
+        return {
+            "error": {
+                "type": legacy_type,
+                "code": "legacy_string_body",
+                "message": legacy_message,
+            }
+        }
     if not isinstance(body, dict) or "error" not in body or not isinstance(body["error"], dict):
         return {
             "error": {
