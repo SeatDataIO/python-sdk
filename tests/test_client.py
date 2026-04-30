@@ -283,10 +283,10 @@ class TestSeatDataClient:
         result = client.create_event_request(search_query="Taylor Swift")
         assert result == test_data
 
-
     @respx.mock
     def test_event_request_add_emits_deprecation_warning(self):
         import warnings
+
         respx.post("https://seatdata.io/api/v0.4/events/event-request-add").mock(
             return_value=httpx.Response(202, json={"job_id": "x"})
         )
@@ -295,7 +295,6 @@ class TestSeatDataClient:
             warnings.simplefilter("always")
             client.event_request_add(search_query="X")
         assert any(issubclass(w.category, DeprecationWarning) for w in caught)
-
 
     def test_create_event_request_empty_query_raises(self):
         client = SeatDataClient(api_key="a" * 64)
@@ -312,10 +311,10 @@ class TestSeatDataClient:
         result = client.get_event_request_status(job_id="test-job-123")
         assert result == test_data
 
-
     @respx.mock
     def test_event_request_status_alias_emits_deprecation(self):
         import warnings
+
         respx.get("https://seatdata.io/api/v0.4/events/event-request-status/x/").mock(
             return_value=httpx.Response(200, json={"job_id": "x"})
         )

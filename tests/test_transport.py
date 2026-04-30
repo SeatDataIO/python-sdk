@@ -393,9 +393,11 @@ class TestAsyncTransport:
         try:
             respx.get("https://seatdata.io/api/v1/x").mock(
                 side_effect=[
-                    httpx.Response(429, headers={"Retry-After": "0"}, json={
-                        "error": {"type": "rate_limit_error", "code": "x", "message": "x"}
-                    }),
+                    httpx.Response(
+                        429,
+                        headers={"Retry-After": "0"},
+                        json={"error": {"type": "rate_limit_error", "code": "x", "message": "x"}},
+                    ),
                     httpx.Response(200, json={"ok": True}),
                 ]
             )

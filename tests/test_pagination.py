@@ -83,10 +83,12 @@ class TestAsyncPageIterator:
     async def test_yields_items_from_pages(self):
         from seatdata.pagination import AsyncPageIterator
 
-        pages_iter = iter([
-            {"data": [1, 2], "has_more": True, "next_cursor": "c1"},
-            {"data": [3], "has_more": False, "next_cursor": None},
-        ])
+        pages_iter = iter(
+            [
+                {"data": [1, 2], "has_more": True, "next_cursor": "c1"},
+                {"data": [3], "has_more": False, "next_cursor": None},
+            ]
+        )
 
         async def fetch(cursor):
             return next(pages_iter)
@@ -100,10 +102,12 @@ class TestAsyncPageIterator:
     async def test_current_cursor_async(self):
         from seatdata.pagination import AsyncPageIterator
 
-        pages_iter = iter([
-            {"data": [1], "has_more": True, "next_cursor": "c1"},
-            {"data": [2], "has_more": False, "next_cursor": None},
-        ])
+        pages_iter = iter(
+            [
+                {"data": [1], "has_more": True, "next_cursor": "c1"},
+                {"data": [2], "has_more": False, "next_cursor": None},
+            ]
+        )
 
         async def fetch(cursor):
             return next(pages_iter)
