@@ -106,6 +106,8 @@ class TestSeatDataClient:
     def test_context_manager(self):
         with SeatDataClient(api_key="a" * 64) as client:
             assert client._api_key == "a" * 64
+            assert not client.session.is_closed
+        assert client.session.is_closed
 
     @respx.mock
     def test_event_request_add_success(self):
