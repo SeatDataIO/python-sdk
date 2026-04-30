@@ -1,5 +1,5 @@
 from typing import Dict, Any, Optional, List, cast
-import requests
+import httpx
 
 from .exceptions import (
     SeatDataException,
@@ -20,8 +20,10 @@ class SeatDataClient:
 
         self._api_key = api_key
         self.timeout = timeout
-        self.session = requests.Session()
-        self.session.headers.update({"api-key": api_key, "User-Agent": "SeatData-Python-SDK/0.3.0"})
+        self.session = httpx.Client(
+            timeout=timeout,
+            headers={"api-key": api_key, "User-Agent": "SeatData-Python-SDK/0.3.0"},
+        )
 
     def _make_request(
         self,
@@ -33,9 +35,7 @@ class SeatDataClient:
         url = self.BASE_URL + endpoint
 
         try:
-            response = self.session.request(
-                method=method, url=url, params=params, json=json_data, timeout=self.timeout
-            )
+            response = self.session.request(method=method, url=url, params=params, json=json_data)
 
             if response.status_code == 401:
                 raise AuthenticationError("Invalid API key")
@@ -51,7 +51,7 @@ class SeatDataClient:
 
             return response.json()
 
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             raise SeatDataException(f"Request failed: {str(e)}")
 
     def get_sales_data(
@@ -198,7 +198,7 @@ class SeatDataClient:
             response.raise_for_status()
             return response.text
 
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             raise SeatDataException(f"Request failed: {str(e)}")
 
     def close(self):
