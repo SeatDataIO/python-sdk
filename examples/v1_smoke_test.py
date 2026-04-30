@@ -9,10 +9,10 @@ def banner(label):
     print(f"\n=== {label} ===")
 
 
-def sync_smoke(api_key):
+def sync_smoke(api_key, base_url):
     failures = []
 
-    with SeatDataClient(api_key=api_key) as client:
+    with SeatDataClient(api_key=api_key, base_url=base_url) as client:
         banner("1. get_account()")
         try:
             account = client.get_account()
@@ -118,11 +118,11 @@ def sync_smoke(api_key):
     return failures
 
 
-async def async_smoke(api_key):
+async def async_smoke(api_key, base_url):
     failures = []
     banner("9. AsyncSeatDataClient: get_account + iter_search_events")
     try:
-        async with AsyncSeatDataClient(api_key=api_key) as client:
+        async with AsyncSeatDataClient(api_key=api_key, base_url=base_url) as client:
             account = await client.get_account()
             print(f"  user_id:        {account['user_id']}")
             count = 0
@@ -148,11 +148,14 @@ def main():
         print(f"SEATDATA_API_KEY must be 64 characters (got {len(api_key)}).")
         sys.exit(2)
 
+    base_url = os.environ.get("SEATDATA_BASE_URL", "https://seatdata.io").rstrip("/")
+
     print("SeatData SDK v1.0.0 smoke test")
+    print(f"Base URL:      {base_url}")
     print(f"Using API key: {api_key[:8]}...{api_key[-4:]}")
 
-    sync_failures = sync_smoke(api_key)
-    async_failures = asyncio.run(async_smoke(api_key))
+    sync_failures = sync_smoke(api_key, base_url)
+    async_failures = asyncio.run(async_smoke(api_key, base_url))
 
     failures = sync_failures + async_failures
 
