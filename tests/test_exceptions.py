@@ -60,6 +60,25 @@ class TestExceptionHierarchy:
         assert err.items_yielded == 42
         assert err.last_cursor == "abc123"
 
+    def test_cursor_expired_forwards_diagnostic_kwargs(self):
+        err = CursorExpiredError(
+            "expired",
+            items_yielded=5,
+            last_cursor="c1",
+            error_type="invalid_request",
+            error_code="invalid_cursor",
+            status_code=400,
+            response_body={"error": {"type": "invalid_request"}},
+            param="starting_after",
+        )
+        assert err.items_yielded == 5
+        assert err.last_cursor == "c1"
+        assert err.error_type == "invalid_request"
+        assert err.error_code == "invalid_cursor"
+        assert err.status_code == 400
+        assert err.response_body == {"error": {"type": "invalid_request"}}
+        assert err.param == "starting_after"
+
     def test_base_error_carries_diagnostic_fields(self):
         err = SeatDataAuthError(
             "bad key",
