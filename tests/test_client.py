@@ -301,3 +301,26 @@ class TestSeatDataClient:
         client = SeatDataClient(api_key="a" * 64)
         with pytest.raises(ValueError, match="search_query must be provided"):
             client.create_event_request(search_query="")
+
+    @respx.mock
+    def test_get_event_request_status_success(self):
+        test_data = {"job_id": "test-job-123", "status": "completed"}
+        respx.get("https://seatdata.io/api/v0.4/events/event-request-status/test-job-123/").mock(
+            return_value=httpx.Response(200, json=test_data)
+        )
+        client = SeatDataClient(api_key="a" * 64)
+        result = client.get_event_request_status(job_id="test-job-123")
+        assert result == test_data
+
+
+    @respx.mock
+    def test_event_request_status_alias_emits_deprecation(self):
+        import warnings
+        respx.get("https://seatdata.io/api/v0.4/events/event-request-status/x/").mock(
+            return_value=httpx.Response(200, json={"job_id": "x"})
+        )
+        client = SeatDataClient(api_key="a" * 64)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            client.event_request_status(job_id="x")
+        assert any(issubclass(w.category, DeprecationWarning) for w in caught)

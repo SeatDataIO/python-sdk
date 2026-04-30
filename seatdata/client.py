@@ -302,7 +302,7 @@ class SeatDataClient:
         )
         return self.create_event_request(search_query)
 
-    def event_request_status(self, job_id: str) -> Dict[str, Any]:
+    def get_event_request_status(self, job_id: str) -> Dict[str, Any]:
         if not job_id:
             raise ValueError("job_id must be provided")
         response = self._transport.request_json(
@@ -311,6 +311,15 @@ class SeatDataClient:
         if response is None:
             raise SeatDataError("Empty response from API")
         return cast(Dict[str, Any], response)
+
+    def event_request_status(self, job_id: str) -> Dict[str, Any]:
+        warnings.warn(
+            "event_request_status() is deprecated. Use get_event_request_status() instead. "
+            "This alias will be removed in v1.1.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.get_event_request_status(job_id)
 
     def download_daily_csv(self, date: Optional[str] = None) -> str:
         params: Dict[str, Any] = {}
