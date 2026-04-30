@@ -76,3 +76,57 @@ class TestPageIteratorSync:
             next(it)
         assert exc_info.value.items_yielded == 2
         assert exc_info.value.last_cursor == "c1"
+
+
+class TestAsyncPageIterator:
+    @pytest.mark.asyncio
+    async def test_yields_items_from_pages(self):
+        from seatdata.pagination import AsyncPageIterator
+
+        pages_iter = iter([
+            {"data": [1, 2], "has_more": True, "next_cursor": "c1"},
+            {"data": [3], "has_more": False, "next_cursor": None},
+        ])
+
+        async def fetch(cursor):
+            return next(pages_iter)
+
+        items = []
+        async for item in AsyncPageIterator(fetch):
+            items.append(item)
+        assert items == [1, 2, 3]
+
+    @pytest.mark.asyncio
+    async def test_current_cursor_async(self):
+        from seatdata.pagination import AsyncPageIterator
+
+        pages_iter = iter([
+            {"data": [1], "has_more": True, "next_cursor": "c1"},
+            {"data": [2], "has_more": False, "next_cursor": None},
+        ])
+
+        async def fetch(cursor):
+            return next(pages_iter)
+
+        it = AsyncPageIterator(fetch)
+        await it.__anext__()
+        await it.__anext__()
+        assert it.current_cursor == "c1"
+
+    @pytest.mark.asyncio
+    async def test_async_cursor_expired_enriched(self):
+        from seatdata.exceptions import CursorExpiredError
+        from seatdata.pagination import AsyncPageIterator
+
+        async def fetch(cursor):
+            if cursor is None:
+                return {"data": [1, 2], "has_more": True, "next_cursor": "c1"}
+            raise CursorExpiredError("expired", error_code="invalid_cursor")
+
+        it = AsyncPageIterator(fetch)
+        await it.__anext__()
+        await it.__anext__()
+        with pytest.raises(CursorExpiredError) as exc_info:
+            await it.__anext__()
+        assert exc_info.value.items_yielded == 2
+        assert exc_info.value.last_cursor == "c1"
