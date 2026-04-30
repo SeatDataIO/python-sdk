@@ -1,3 +1,5 @@
+import random
+import time
 from typing import Any, Dict, Optional
 
 import httpx
@@ -12,6 +14,35 @@ from .exceptions import (
     SeatDataServerError,
     SeatDataSubscriptionError,
 )
+
+_RETRY_STATUS = {429, 502, 503, 504}
+_RETRYABLE_NETWORK_EXCEPTIONS = (
+    httpx.ConnectError,
+    httpx.ReadTimeout,
+    httpx.RemoteProtocolError,
+)
+_BACKOFF_BASE_SECONDS = 0.5
+_BACKOFF_CAP_SECONDS = 30.0
+
+
+def _should_retry(response: Optional["httpx.Response"], exc: Optional[Exception]) -> bool:
+    if exc is not None:
+        return isinstance(exc, _RETRYABLE_NETWORK_EXCEPTIONS)
+    if response is not None:
+        return response.status_code in _RETRY_STATUS
+    return False
+
+
+def _sleep_seconds(response: Optional["httpx.Response"], attempt: int) -> float:
+    if response is not None:
+        retry_after = response.headers.get("Retry-After")
+        if retry_after is not None:
+            try:
+                return max(0, int(retry_after))
+            except ValueError:
+                pass
+    return random.uniform(0, min(_BACKOFF_BASE_SECONDS * (2**attempt), _BACKOFF_CAP_SECONDS))
+
 
 try:
     from importlib.metadata import PackageNotFoundError, version as _pkg_version
@@ -128,10 +159,27 @@ class _Transport:
         retry_safe: bool = True,
     ) -> Any:
         url = self._base_url + path
-        response = self._client.request(method, url, params=params, json=json)
-        if response.status_code >= 400:
+        attempts = self._max_retries + 1 if retry_safe else 1
+        last_response: Optional[httpx.Response] = None
+        for attempt in range(attempts):
+            last_response = None
+            try:
+                response = self._client.request(method, url, params=params, json=json)
+            except _RETRYABLE_NETWORK_EXCEPTIONS as e:
+                if retry_safe and attempt < attempts - 1:
+                    time.sleep(_sleep_seconds(None, attempt))
+                    continue
+                raise SeatDataServerError(str(e), error_type="server_error")
+            last_response = response
+            if response.status_code < 400:
+                return response.json()
+            if retry_safe and attempt < attempts - 1 and _should_retry(response, None):
+                time.sleep(_sleep_seconds(response, attempt))
+                continue
             _raise_from_response(response)
-        return response.json()
+        if last_response is not None:
+            _raise_from_response(last_response)
+        raise SeatDataServerError("request failed without response", error_type="server_error")
 
     def request_text(
         self,
@@ -142,10 +190,27 @@ class _Transport:
         retry_safe: bool = True,
     ) -> str:
         url = self._base_url + path
-        response = self._client.request(method, url, params=params)
-        if response.status_code >= 400:
+        attempts = self._max_retries + 1 if retry_safe else 1
+        last_response: Optional[httpx.Response] = None
+        for attempt in range(attempts):
+            last_response = None
+            try:
+                response = self._client.request(method, url, params=params)
+            except _RETRYABLE_NETWORK_EXCEPTIONS as e:
+                if retry_safe and attempt < attempts - 1:
+                    time.sleep(_sleep_seconds(None, attempt))
+                    continue
+                raise SeatDataServerError(str(e), error_type="server_error")
+            last_response = response
+            if response.status_code < 400:
+                return response.text
+            if retry_safe and attempt < attempts - 1 and _should_retry(response, None):
+                time.sleep(_sleep_seconds(response, attempt))
+                continue
             _raise_from_response(response)
-        return response.text
+        if last_response is not None:
+            _raise_from_response(last_response)
+        raise SeatDataServerError("request failed without response", error_type="server_error")
 
     def close(self) -> None:
         self._client.close()
