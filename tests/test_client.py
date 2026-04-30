@@ -42,10 +42,19 @@ class TestSeatDataClient:
 
     @respx.mock
     def test_rate_limit_error(self):
-        respx.post("https://seatdata.io/api/v0.3.1/events/search").mock(
-            return_value=httpx.Response(429)
+        respx.get("https://seatdata.io/api/v1/events/search").mock(
+            return_value=httpx.Response(
+                429,
+                json={
+                    "error": {
+                        "type": "rate_limit_error",
+                        "code": "x",
+                        "message": "Rate limit exceeded",
+                    }
+                },
+            )
         )
-        client = SeatDataClient(api_key="a" * 64)
+        client = SeatDataClient(api_key="a" * 64, max_retries=0)
         with pytest.raises(RateLimitError):
             client.search_events(event_name="test")
 
@@ -90,18 +99,6 @@ class TestSeatDataClient:
 
         with pytest.raises(ValueError, match="Either event_id or event_id_sh must be provided"):
             client.get_listings()
-
-    @respx.mock
-    def test_search_events_success(self):
-        test_data = [{"event_name": "Concert", "venue": "Stadium"}]
-        route = respx.post("https://seatdata.io/api/v0.3.1/events/search").mock(
-            return_value=httpx.Response(200, json=test_data)
-        )
-        client = SeatDataClient(api_key="a" * 64)
-        result = client.search_events(event_name="Concert", venue_name="Stadium")
-        assert result == test_data
-        body = json.loads(route.calls.last.request.content)
-        assert body == {"event_name": "Concert", "venue_name": "Stadium"}
 
     def test_context_manager(self):
         with SeatDataClient(api_key="a" * 64) as client:

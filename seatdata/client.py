@@ -2,7 +2,8 @@ from typing import Any, Dict, List, Optional, cast
 
 from ._transport import _Transport
 from .exceptions import SeatDataError
-from .types import AccountResponse, UsageResponse
+from .pagination import PageIterator
+from .types import AccountResponse, EventSearchItem, EventSearchPage, UsageResponse
 
 
 class SeatDataClient:
@@ -62,6 +63,52 @@ class SeatDataClient:
             self._transport.request_json("GET", "/api/v0.1/listings/get", params=params),
         )
 
+    def _search_events_params(
+        self,
+        *,
+        event_name: Optional[str] = None,
+        event_date: Optional[str] = None,
+        venue_name: Optional[str] = None,
+        venue_city: Optional[str] = None,
+        venue_state: Optional[str] = None,
+        country_code: Optional[str] = None,
+        tm_event_id: Optional[str] = None,
+        std_event_id: Optional[int] = None,
+        std_venue_id: Optional[int] = None,
+        venue_slug: Optional[str] = None,
+        historical: Optional[bool] = None,
+        limit: Optional[int] = None,
+        starting_after: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if event_name is not None:
+            params["event_name"] = event_name
+        if event_date is not None:
+            params["event_date"] = event_date
+        if venue_name is not None:
+            params["venue_name"] = venue_name
+        if venue_city is not None:
+            params["venue_city"] = venue_city
+        if venue_state is not None:
+            params["venue_state"] = venue_state
+        if country_code is not None:
+            params["country_code"] = country_code
+        if tm_event_id is not None:
+            params["tm_event_id"] = tm_event_id
+        if std_event_id is not None:
+            params["std_event_id"] = std_event_id
+        if std_venue_id is not None:
+            params["std_venue_id"] = std_venue_id
+        if venue_slug is not None:
+            params["venue_slug"] = venue_slug
+        if historical is not None:
+            params["historical"] = "true" if historical else "false"
+        if limit is not None:
+            params["limit"] = limit
+        if starting_after is not None:
+            params["starting_after"] = starting_after
+        return params
+
     def search_events(
         self,
         event_name: Optional[str] = None,
@@ -69,29 +116,102 @@ class SeatDataClient:
         venue_name: Optional[str] = None,
         venue_city: Optional[str] = None,
         venue_state: Optional[str] = None,
-        return_full_response: bool = False,
-        **kwargs: Any,
-    ) -> Any:
-        search_params: Dict[str, Any] = {}
-        if event_name:
-            search_params["event_name"] = event_name
-        if event_date:
-            search_params["event_date"] = event_date
-        if venue_name:
-            search_params["venue_name"] = venue_name
-        if venue_city:
-            search_params["venue_city"] = venue_city
-        if venue_state:
-            search_params["venue_state"] = venue_state
-        search_params.update(kwargs)
-        response = self._transport.request_json(
-            "POST", "/api/v0.3.1/events/search", json=search_params
+        country_code: Optional[str] = None,
+        tm_event_id: Optional[str] = None,
+        std_event_id: Optional[int] = None,
+        std_venue_id: Optional[int] = None,
+        venue_slug: Optional[str] = None,
+        historical: Optional[bool] = None,
+        limit: Optional[int] = None,
+    ) -> List[EventSearchItem]:
+        page = self.search_events_page(
+            event_name=event_name,
+            event_date=event_date,
+            venue_name=venue_name,
+            venue_city=venue_city,
+            venue_state=venue_state,
+            country_code=country_code,
+            tm_event_id=tm_event_id,
+            std_event_id=std_event_id,
+            std_venue_id=std_venue_id,
+            venue_slug=venue_slug,
+            historical=historical,
+            limit=limit,
         )
-        if return_full_response:
-            return response
-        if isinstance(response, dict) and "items" in response:
-            return response["items"]
-        return response
+        return cast(List[EventSearchItem], page["data"])
+
+    def search_events_page(
+        self,
+        event_name: Optional[str] = None,
+        event_date: Optional[str] = None,
+        venue_name: Optional[str] = None,
+        venue_city: Optional[str] = None,
+        venue_state: Optional[str] = None,
+        country_code: Optional[str] = None,
+        tm_event_id: Optional[str] = None,
+        std_event_id: Optional[int] = None,
+        std_venue_id: Optional[int] = None,
+        venue_slug: Optional[str] = None,
+        historical: Optional[bool] = None,
+        limit: Optional[int] = None,
+        starting_after: Optional[str] = None,
+    ) -> EventSearchPage:
+        params = self._search_events_params(
+            event_name=event_name,
+            event_date=event_date,
+            venue_name=venue_name,
+            venue_city=venue_city,
+            venue_state=venue_state,
+            country_code=country_code,
+            tm_event_id=tm_event_id,
+            std_event_id=std_event_id,
+            std_venue_id=std_venue_id,
+            venue_slug=venue_slug,
+            historical=historical,
+            limit=limit,
+            starting_after=starting_after,
+        )
+        return cast(
+            EventSearchPage,
+            self._transport.request_json("GET", "/api/v1/events/search", params=params),
+        )
+
+    def iter_search_events(
+        self,
+        event_name: Optional[str] = None,
+        event_date: Optional[str] = None,
+        venue_name: Optional[str] = None,
+        venue_city: Optional[str] = None,
+        venue_state: Optional[str] = None,
+        country_code: Optional[str] = None,
+        tm_event_id: Optional[str] = None,
+        std_event_id: Optional[int] = None,
+        std_venue_id: Optional[int] = None,
+        venue_slug: Optional[str] = None,
+        historical: Optional[bool] = None,
+        limit: Optional[int] = None,
+    ) -> PageIterator[EventSearchItem]:
+        def fetch(cursor: Optional[str]) -> Dict[str, Any]:
+            return cast(
+                Dict[str, Any],
+                self.search_events_page(
+                    event_name=event_name,
+                    event_date=event_date,
+                    venue_name=venue_name,
+                    venue_city=venue_city,
+                    venue_state=venue_state,
+                    country_code=country_code,
+                    tm_event_id=tm_event_id,
+                    std_event_id=std_event_id,
+                    std_venue_id=std_venue_id,
+                    venue_slug=venue_slug,
+                    historical=historical,
+                    limit=limit,
+                    starting_after=cursor,
+                ),
+            )
+
+        return PageIterator(fetch)
 
     def event_request_add(self, search_query: str) -> Dict[str, Any]:
         if not search_query:
