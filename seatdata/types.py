@@ -113,3 +113,12 @@ class ErrorEnvelopeBody(TypedDict):
 
 class ErrorEnvelope(TypedDict):
     error: ErrorEnvelopeBody
+
+
+from datetime import datetime
+
+
+def parse_timestamp(ts: str) -> datetime:
+    if ts.endswith("Z"):
+        ts = ts[:-1] + "+00:00"
+    return datetime.fromisoformat(ts)

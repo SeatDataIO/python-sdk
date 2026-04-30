@@ -111,3 +111,30 @@ def test_error_envelope_shape():
     }
     env: ErrorEnvelope = {"error": body}
     assert env["error"]["type"] == "invalid_request"
+
+
+from datetime import datetime, timezone
+from seatdata.types import parse_timestamp
+
+
+def test_parse_timestamp_z_suffix():
+    result = parse_timestamp("2026-04-26T14:30:00Z")
+    assert result == datetime(2026, 4, 26, 14, 30, 0, tzinfo=timezone.utc)
+
+
+def test_parse_timestamp_with_microseconds():
+    result = parse_timestamp("2026-04-26T14:30:00.123456Z")
+    assert result.microsecond == 123456
+    assert result.tzinfo == timezone.utc
+
+
+def test_parse_timestamp_explicit_offset_passes_through():
+    result = parse_timestamp("2026-04-26T14:30:00+00:00")
+    assert result.tzinfo == timezone.utc
+
+
+def test_parse_timestamp_invalid_raises():
+    import pytest
+
+    with pytest.raises(ValueError):
+        parse_timestamp("not a timestamp")
