@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Dict, List, Optional, cast
 
 from ._transport import _Transport
@@ -241,6 +242,43 @@ class SeatDataClient:
         if date:
             params["date"] = date
         return self._transport.request_text("GET", "/api/v0.5/daily-csv/download", params=params)
+
+    def search_events_legacy(
+        self,
+        event_name: Optional[str] = None,
+        event_date: Optional[str] = None,
+        venue_name: Optional[str] = None,
+        venue_city: Optional[str] = None,
+        venue_state: Optional[str] = None,
+        return_full_response: bool = False,
+        **kwargs: Any,
+    ) -> Any:
+        warnings.warn(
+            "search_events_legacy() calls the deprecated v0.3.1 POST endpoint. "
+            "Use search_events() (v1 GET) instead. This method will be removed in v1.1.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        search_params: Dict[str, Any] = {}
+        if event_name:
+            search_params["event_name"] = event_name
+        if event_date:
+            search_params["event_date"] = event_date
+        if venue_name:
+            search_params["venue_name"] = venue_name
+        if venue_city:
+            search_params["venue_city"] = venue_city
+        if venue_state:
+            search_params["venue_state"] = venue_state
+        search_params.update(kwargs)
+        response = self._transport.request_json(
+            "POST", "/api/v0.3.1/events/search", json=search_params
+        )
+        if return_full_response:
+            return response
+        if isinstance(response, dict) and "items" in response:
+            return response["items"]
+        return response
 
     def close(self) -> None:
         self._transport.close()
