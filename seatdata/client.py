@@ -4,7 +4,14 @@ from typing import Any, Dict, List, Optional, cast
 from ._transport import _Transport
 from .exceptions import SeatDataError
 from .pagination import PageIterator
-from .types import AccountResponse, EventSearchItem, EventSearchPage, UsageResponse
+from .types import (
+    AccountResponse,
+    EventSearchItem,
+    EventSearchPage,
+    EventStatsPage,
+    EventStatsSnapshot,
+    UsageResponse,
+)
 
 
 class SeatDataClient:
@@ -207,6 +214,65 @@ class SeatDataClient:
                     std_venue_id=std_venue_id,
                     venue_slug=venue_slug,
                     historical=historical,
+                    limit=limit,
+                    starting_after=cursor,
+                ),
+            )
+
+        return PageIterator(fetch)
+
+    def _event_stats_params(
+        self,
+        *,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: Optional[int] = None,
+        starting_after: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = {}
+        if start_date is not None:
+            params["start_date"] = start_date
+        if end_date is not None:
+            params["end_date"] = end_date
+        if limit is not None:
+            params["limit"] = limit
+        if starting_after is not None:
+            params["starting_after"] = starting_after
+        return params
+
+    def get_event_stats(
+        self,
+        event_id: int,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: Optional[int] = None,
+        starting_after: Optional[str] = None,
+    ) -> EventStatsPage:
+        params = self._event_stats_params(
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+            starting_after=starting_after,
+        )
+        return cast(
+            EventStatsPage,
+            self._transport.request_json("GET", f"/api/v1/events/{event_id}/stats", params=params),
+        )
+
+    def iter_event_stats(
+        self,
+        event_id: int,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> PageIterator[EventStatsSnapshot]:
+        def fetch(cursor: Optional[str]) -> Dict[str, Any]:
+            return cast(
+                Dict[str, Any],
+                self.get_event_stats(
+                    event_id,
+                    start_date=start_date,
+                    end_date=end_date,
                     limit=limit,
                     starting_after=cursor,
                 ),
