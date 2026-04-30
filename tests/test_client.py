@@ -272,3 +272,32 @@ class TestSeatDataClient:
 
         with pytest.raises(SeatDataException, match="Cannot request dates older than 30 days"):
             client.download_daily_csv(date="20200101")
+
+    @respx.mock
+    def test_create_event_request_success(self):
+        test_data = {"job_id": "test-job-123", "status": "pending"}
+        respx.post("https://seatdata.io/api/v0.4/events/event-request-add").mock(
+            return_value=httpx.Response(202, json=test_data)
+        )
+        client = SeatDataClient(api_key="a" * 64)
+        result = client.create_event_request(search_query="Taylor Swift")
+        assert result == test_data
+
+
+    @respx.mock
+    def test_event_request_add_emits_deprecation_warning(self):
+        import warnings
+        respx.post("https://seatdata.io/api/v0.4/events/event-request-add").mock(
+            return_value=httpx.Response(202, json={"job_id": "x"})
+        )
+        client = SeatDataClient(api_key="a" * 64)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            client.event_request_add(search_query="X")
+        assert any(issubclass(w.category, DeprecationWarning) for w in caught)
+
+
+    def test_create_event_request_empty_query_raises(self):
+        client = SeatDataClient(api_key="a" * 64)
+        with pytest.raises(ValueError, match="search_query must be provided"):
+            client.create_event_request(search_query="")

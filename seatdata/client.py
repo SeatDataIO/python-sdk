@@ -280,7 +280,7 @@ class SeatDataClient:
 
         return PageIterator(fetch)
 
-    def event_request_add(self, search_query: str) -> Dict[str, Any]:
+    def create_event_request(self, search_query: str) -> Dict[str, Any]:
         if not search_query:
             raise ValueError("search_query must be provided")
         response = self._transport.request_json(
@@ -292,6 +292,15 @@ class SeatDataClient:
         if response is None:
             raise SeatDataError("Empty response from API")
         return cast(Dict[str, Any], response)
+
+    def event_request_add(self, search_query: str) -> Dict[str, Any]:
+        warnings.warn(
+            "event_request_add() is deprecated. Use create_event_request() instead. "
+            "This alias will be removed in v1.1.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.create_event_request(search_query)
 
     def event_request_status(self, job_id: str) -> Dict[str, Any]:
         if not job_id:
