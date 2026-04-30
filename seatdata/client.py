@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional, cast
 
 from ._transport import _Transport
 from .exceptions import SeatDataError
+from .types import AccountResponse, UsageResponse
 
 
 class SeatDataClient:
@@ -24,6 +25,12 @@ class SeatDataClient:
             timeout=timeout,
             max_retries=max_retries,
         )
+
+    def get_account(self) -> AccountResponse:
+        return cast(AccountResponse, self._transport.request_json("GET", "/api/v1/account"))
+
+    def get_usage(self) -> UsageResponse:
+        return cast(UsageResponse, self._transport.request_json("GET", "/api/v1/usage"))
 
     def get_sales_data(
         self, event_id: Optional[str] = None, event_id_sh: Optional[str] = None
