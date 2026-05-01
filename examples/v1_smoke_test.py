@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sys
+import time
 
 from seatdata import AsyncSeatDataClient, SeatDataClient
 
@@ -9,11 +10,16 @@ def banner(label):
     print(f"\n=== {label} ===")
 
 
+def elapsed(start):
+    print(f"  elapsed:        {time.monotonic() - start:.3f}s")
+
+
 def sync_smoke(api_key, base_url):
     failures = []
 
     with SeatDataClient(api_key=api_key, base_url=base_url) as client:
         banner("1. get_account()")
+        t = time.monotonic()
         try:
             account = client.get_account()
             print(f"  user_id:        {account['user_id']}")
@@ -23,8 +29,10 @@ def sync_smoke(api_key, base_url):
         except Exception as e:
             failures.append(("get_account", e))
             print(f"  FAILED: {type(e).__name__}: {e}")
+        elapsed(t)
 
         banner("2. get_usage()")
+        t = time.monotonic()
         try:
             usage = client.get_usage()
             print(f"  period:         {usage['period_start']} -> {usage['period_end']}")
@@ -33,19 +41,23 @@ def sync_smoke(api_key, base_url):
         except Exception as e:
             failures.append(("get_usage", e))
             print(f"  FAILED: {type(e).__name__}: {e}")
+        elapsed(t)
 
         banner("3. search_events() v1 GET")
         events = []
+        t = time.monotonic()
         try:
-            events = client.search_events(venue_name="Madison Square Garden", limit=5)
+            events = client.search_events(venue_name="Oracle Park", limit=5)
             print(f"  found:          {len(events)} events (page 1)")
             for ev in events[:3]:
                 print(f"    - {ev['event_id']:>8}  {ev['event_date']}  " f"{ev['event_name'][:50]}")
         except Exception as e:
             failures.append(("search_events", e))
             print(f"  FAILED: {type(e).__name__}: {e}")
+        elapsed(t)
 
         banner("4. iter_search_events() auto-pagination")
+        t = time.monotonic()
         try:
             count = 0
             for _ in client.iter_search_events(venue_name="Madison Square Garden", limit=20):
@@ -56,6 +68,7 @@ def sync_smoke(api_key, base_url):
         except Exception as e:
             failures.append(("iter_search_events", e))
             print(f"  FAILED: {type(e).__name__}: {e}")
+        elapsed(t)
 
         if not events:
             print("\n  Skipping stats/sales/listings checks: no events to test against.")
@@ -65,6 +78,7 @@ def sync_smoke(api_key, base_url):
         print(f"\n  Using event_id={event_id} for paid endpoint checks.")
 
         banner("5. get_event_stats() v1 paid")
+        t = time.monotonic()
         try:
             page = client.get_event_stats(event_id, limit=10)
             print(f"  event_id:       {page['event_id']}")
@@ -83,8 +97,10 @@ def sync_smoke(api_key, base_url):
         except Exception as e:
             failures.append(("get_event_stats", e))
             print(f"  FAILED: {type(e).__name__}: {e}")
+        elapsed(t)
 
         banner("6. iter_event_stats() auto-pagination")
+        t = time.monotonic()
         try:
             it = client.iter_event_stats(event_id, limit=10)
             count = 0
@@ -97,16 +113,20 @@ def sync_smoke(api_key, base_url):
         except Exception as e:
             failures.append(("iter_event_stats", e))
             print(f"  FAILED: {type(e).__name__}: {e}")
+        elapsed(t)
 
         banner("7. get_sales_data() v0.x preserved")
+        t = time.monotonic()
         try:
             sales = client.get_sales_data(event_id=str(event_id))
             print(f"  records:        {len(sales)}")
         except Exception as e:
             failures.append(("get_sales_data", e))
             print(f"  FAILED: {type(e).__name__}: {e}")
+        elapsed(t)
 
         banner("8. get_listings() v0.x preserved")
+        t = time.monotonic()
         try:
             listings = client.get_listings(event_id=str(event_id))
             count = len(listings.get("listings", []))
@@ -114,6 +134,7 @@ def sync_smoke(api_key, base_url):
         except Exception as e:
             failures.append(("get_listings", e))
             print(f"  FAILED: {type(e).__name__}: {e}")
+        elapsed(t)
 
     return failures
 
@@ -121,6 +142,7 @@ def sync_smoke(api_key, base_url):
 async def async_smoke(api_key, base_url):
     failures = []
     banner("9. AsyncSeatDataClient: get_account + iter_search_events")
+    t = time.monotonic()
     try:
         async with AsyncSeatDataClient(api_key=api_key, base_url=base_url) as client:
             account = await client.get_account()
@@ -134,6 +156,7 @@ async def async_smoke(api_key, base_url):
     except Exception as e:
         failures.append(("async client", e))
         print(f"  FAILED: {type(e).__name__}: {e}")
+    elapsed(t)
     return failures
 
 
