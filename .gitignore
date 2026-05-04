@@ -138,3 +138,6 @@ cython_debug/
 
 # PyCharm
 .idea/
+
+# Local-only verification script
+examples/v1_smoke_test.py
