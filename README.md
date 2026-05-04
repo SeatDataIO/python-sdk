@@ -7,6 +7,8 @@
 
 Official Python SDK for SeatData API - access ticket sales data, event listings, and search functionality.
 
+**API Documentation:** https://app.swaggerhub.com/apis-docs/seatdata/SeatDataAPI/
+
 ## Installation
 
 ```bash
@@ -53,8 +55,10 @@ from seatdata import AsyncSeatDataClient
 async def main():
     async with AsyncSeatDataClient(api_key="your_64_char_api_key") as client:
         events = await client.search_events(event_name="Taylor Swift")
-        async for snapshot in client.iter_event_stats(events[0]["event_id"]):
-            print(snapshot["timestamp"], snapshot["get_in"])
+        if events:
+            event_id = str(events[0]["event_id"])
+            sales = await client.get_sales_data(event_id=event_id)
+            print(f"{len(sales)} sales records for event {event_id}")
 
 
 asyncio.run(main())
