@@ -28,7 +28,7 @@ client = SeatDataClient(api_key="your_64_char_api_key")
 account = client.get_account()
 print(account["plans"])
 
-# Search events (v1) — returns list of items from one page
+# Search events (v1) - returns list of items from one page
 events = client.search_events(venue_name="Madison Square Garden", venue_city="New York")
 
 # Or iterate all matching events across pages

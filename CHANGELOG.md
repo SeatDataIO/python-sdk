@@ -26,8 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `event_request_status` → `get_event_request_status` (alias kept, deprecated).
 
 ### Deprecated
-- `search_events_legacy()` — calls v0.3.1 POST search; will be removed in v1.1.
-- `event_request_add()`, `event_request_status()` — use the renamed methods; aliases removed in v1.1.
+- `search_events_legacy()` - calls v0.3.1 POST search; will be removed in v1.1.
+- `event_request_add()`, `event_request_status()` - use the renamed methods; aliases removed in v1.1.
 
 ### Dependencies
 - Removed: `requests`.
