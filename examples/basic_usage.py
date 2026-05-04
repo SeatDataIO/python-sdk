@@ -9,7 +9,10 @@ def main():
         print("You can get an API key from support@seatdata.io")
         return
 
-    with SeatDataClient(api_key=api_key) as client:
+    base_url = os.environ.get("SEATDATA_BASE_URL", "https://seatdata.io").rstrip("/")
+    print(f"Base URL: {base_url}")
+
+    with SeatDataClient(api_key=api_key, base_url=base_url) as client:
         events = []
 
         print("\n=== Searching for Events ===")
@@ -19,6 +22,7 @@ def main():
                 venue_name="Madison Square Garden",
                 venue_city="New York",
                 venue_state="NY",
+                historical=True,
             )
             print(f"Found {len(events)} events")
             for event in events[:3]:
