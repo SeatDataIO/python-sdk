@@ -4,7 +4,6 @@ import respx
 
 from seatdata import SeatDataClient
 
-
 SEARCH_URL = "https://seatdata.io/api/v1/events/search"
 
 
