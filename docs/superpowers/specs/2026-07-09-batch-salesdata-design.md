@@ -181,16 +181,30 @@ Changes:
    explicit `payment_required` type, for any body shape).
 3. Add `402: "payment_required"` to the fallback-type map in `_parse_error_body`
    (covers all non-envelope 402 bodies).
-4. **Status-based backstop in `_raise_from_response`:** when `error.type` is not in
-   `_ERROR_TYPE_MAP`, map `status_code == 402` to `SeatDataPaymentError` rather than
-   defaulting to base `SeatDataError`. This guarantees every 402 raises
-   `SeatDataPaymentError` regardless of the server's envelope `type`:
+4. **Status-based backstop in `_raise_from_response`:** route any `402` to
+   `SeatDataPaymentError` **by status, before consulting `_ERROR_TYPE_MAP`**, so it
+   holds for every 402 body shape — including a proper envelope whose `error` dict
+   omits `type` (which would otherwise default `err_type` to `"server_error"`, a
+   *mapped* type, and mis-route to `SeatDataServerError`). Non-402 responses fall
+   through to the type map unchanged. 402 is unambiguously "payment required," so
+   status is the correct discriminator:
 
    ```python
-   cls = _ERROR_TYPE_MAP.get(err_type)
-   if cls is None:
-       cls = SeatDataPaymentError if response.status_code == 402 else SeatDataError
+   cls: type
+   if response.status_code == 402:
+       cls = SeatDataPaymentError
+   else:
+       cls = _ERROR_TYPE_MAP.get(err_type, SeatDataError)
    ```
+
+   The `cls: type` annotation is required for mypy — without it, mypy narrows `cls`
+   to `type[SeatDataPaymentError]` from the first branch and rejects the wider
+   `else` value. It is a local annotation (not a comment; not evaluated at runtime,
+   so Python 3.8-safe).
+
+   Steps 2–3 remain: the `_ERROR_TYPE_MAP` entry keeps the table complete, and the
+   fallback entry gives non-envelope 402s a coherent `error_type` of
+   `"payment_required"` on the raised exception.
 5. Leave `402` out of `_RETRY_STATUS` — a billing failure must not be retried.
 
 ## Validation / payload helper — `seatdata/_batch.py` (new module)
