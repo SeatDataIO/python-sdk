@@ -7,7 +7,7 @@
 
 Official Python SDK for SeatData API - access ticket sales data, event listings, and search functionality.
 
-**API Documentation:** https://app.swaggerhub.com/apis-docs/seatdata/SeatDataAPI/
+**API Documentation:** https://docs.seatdata.io
 
 ## Installation
 
