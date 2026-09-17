@@ -19,7 +19,8 @@ from .exceptions import (
 )
 from . import types
 
-__version__ = "1.1.0"
+from ._version import __version__
+
 __all__ = [
     "SeatDataClient",
     "AsyncSeatDataClient",

@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from ._version import __version__
 from .exceptions import (
     CursorExpiredError,
     SeatDataAuthError,
@@ -48,21 +49,8 @@ def _sleep_seconds(response: Optional["httpx.Response"], attempt: int) -> float:
     return random.uniform(0, min(_BACKOFF_BASE_SECONDS * (2**attempt), _BACKOFF_CAP_SECONDS))
 
 
-try:
-    from importlib.metadata import PackageNotFoundError, version as _pkg_version
-except ImportError:
-    from importlib_metadata import PackageNotFoundError, version as _pkg_version  # type: ignore
-
-
-def _sdk_version() -> str:
-    try:
-        return _pkg_version("seatdata-sdk")
-    except PackageNotFoundError:
-        return "0.0.0+unknown"
-
-
 def _user_agent() -> str:
-    return f"seatdata-python/{_sdk_version()} httpx/{httpx.__version__}"
+    return f"seatdata-python/{__version__} httpx/{httpx.__version__}"
 
 
 _ERROR_TYPE_MAP = {

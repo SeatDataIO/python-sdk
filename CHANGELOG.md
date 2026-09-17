@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- The `User-Agent` header now reports the version from the package itself. It previously read installed distribution metadata, which reports `0.0.0+unknown` for a source checkout or a vendored copy, and a stale version for an editable install.
+
 ## [1.1.0] - 2026-09-17
 
 ### Added

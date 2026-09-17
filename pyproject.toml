@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "seatdata-sdk"
-version = "1.1.0"
+dynamic = ["version"]
 description = "Official Python SDK for SeatData API"
 readme = "README.md"
 license = {text = "MIT"}
@@ -50,3 +50,6 @@ python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
+
+[tool.setuptools.dynamic]
+version = {attr = "seatdata._version.__version__"}

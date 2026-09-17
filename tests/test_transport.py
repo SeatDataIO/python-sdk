@@ -2,6 +2,7 @@ import httpx
 import pytest
 import respx
 
+import seatdata
 from seatdata._transport import _Transport
 from seatdata.exceptions import (
     CursorExpiredError,
@@ -53,8 +54,7 @@ def test_request_json_sends_user_agent(transport):
     )
     transport.request_json("GET", "/api/v1/account")
     ua = route.calls.last.request.headers["user-agent"]
-    assert ua.startswith("seatdata-python/")
-    assert "httpx/" in ua
+    assert ua == f"seatdata-python/{seatdata.__version__} httpx/{httpx.__version__}"
 
 
 @respx.mock
