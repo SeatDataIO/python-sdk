@@ -145,3 +145,6 @@ examples/v1_smoke_test.py
 # Local scratch examples, never committed; superseded by all_endpoints.py
 examples/async_event_request.py
 examples/batch_event_requests.py
+
+# Internal planning artifacts, kept local
+docs/superpowers/
