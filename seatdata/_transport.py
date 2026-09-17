@@ -12,6 +12,7 @@ from .exceptions import (
     SeatDataError,
     SeatDataInvalidRequestError,
     SeatDataNotFoundError,
+    SeatDataPaymentError,
     SeatDataRateLimitError,
     SeatDataServerError,
     SeatDataSubscriptionError,
@@ -69,6 +70,7 @@ _ERROR_TYPE_MAP = {
     "subscription_required": SeatDataSubscriptionError,
     "invalid_request": SeatDataInvalidRequestError,
     "not_found": SeatDataNotFoundError,
+    "payment_required": SeatDataPaymentError,
     "rate_limit_error": SeatDataRateLimitError,
     "server_error": SeatDataServerError,
 }
@@ -77,6 +79,7 @@ _ERROR_TYPE_MAP = {
 def _parse_error_body(response: "httpx.Response") -> Dict[str, Any]:
     fallback_type = {
         401: "authentication_error",
+        402: "payment_required",
         404: "not_found",
         429: "rate_limit_error",
     }.get(response.status_code, "server_error")
@@ -129,7 +132,11 @@ def _raise_from_response(response: "httpx.Response") -> None:
             response_body=body,
         )
 
-    cls = _ERROR_TYPE_MAP.get(err_type, SeatDataError)
+    cls: type
+    if response.status_code == 402:
+        cls = SeatDataPaymentError
+    else:
+        cls = _ERROR_TYPE_MAP.get(err_type, SeatDataError)
     kwargs: Dict[str, Any] = {
         "error_type": err_type,
         "error_code": err_code,

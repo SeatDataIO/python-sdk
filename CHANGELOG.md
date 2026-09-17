@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-09-17
+
+### Added
+- `get_event_sales()` and `iter_event_sales()` on both clients - one page or a full cursor walk of `GET /api/v1/events/{event_id}/sales`. Both accept `event_id` or `event_id_sh`, plus `limit` and `source`. `get_event_sales()` also accepts `starting_after`. `iter_event_sales()` manages the cursor itself.
+- `get_event_sales_batch()` on both clients - sales for up to 100 events in one `POST /api/v1/events/sales/batch` request.
+- An optional `source` filter (`sh`, `vs`, `all`) on all three methods. Omitting it reproduces the previous sh-only behavior and charges.
+- `first_page` on `PageIterator` and `AsyncPageIterator`, so the server's first-page-only `total_count` and `sources` survive iteration.
+- New types: `SalesPage`, `SalesRow` (a discriminated union of `SHSalesRow` and `VSSalesRow`), `SourceBlock`, and a `sources` key on `BatchSalesResult`.
+- `SeatDataPaymentError` for HTTP `402 Payment Required`, exported from the top-level package.
+
+### Fixed
+- `402` responses now raise `SeatDataPaymentError` SDK-wide. They previously surfaced as `SeatDataServerError` or the base `SeatDataError` depending on the response body. This also covers `get_sales_data()` and `get_listings()`.
+
+### Deprecated
+- `get_sales_data()` now emits a `DeprecationWarning` naming `get_event_sales()`. It stays on the v0.3 endpoint and will be removed in v2.0.
+- Removal of `search_events_legacy()`, `event_request_add()`, and `event_request_status()` is deferred from v1.1 to v2.0.
+
 ## [1.0.0] - 2026-04-30
 
 ### Added

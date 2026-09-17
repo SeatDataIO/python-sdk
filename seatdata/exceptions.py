@@ -55,6 +55,10 @@ class SeatDataSubscriptionError(SeatDataError):
     pass
 
 
+class SeatDataPaymentError(SeatDataError):
+    pass
+
+
 class SeatDataServerError(SeatDataError):
     pass
 

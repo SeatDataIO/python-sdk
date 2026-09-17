@@ -7,6 +7,7 @@ from .exceptions import (
     SeatDataNotFoundError,
     SeatDataInvalidRequestError,
     SeatDataSubscriptionError,
+    SeatDataPaymentError,
     SeatDataServerError,
     CursorExpiredError,
     SeatDataException,
@@ -18,7 +19,7 @@ from .exceptions import (
 )
 from . import types
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __all__ = [
     "SeatDataClient",
     "AsyncSeatDataClient",
@@ -28,6 +29,7 @@ __all__ = [
     "SeatDataNotFoundError",
     "SeatDataInvalidRequestError",
     "SeatDataSubscriptionError",
+    "SeatDataPaymentError",
     "SeatDataServerError",
     "CursorExpiredError",
     "SeatDataException",

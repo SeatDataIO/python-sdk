@@ -1,15 +1,20 @@
 import warnings
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, Sequence, Union, cast
 
+from ._batch import normalize_batch_response, prepare_batch_payload
+from ._sales import resolve_sales_id, build_event_sales_params
 from ._transport import _Transport
 from .exceptions import SeatDataError
 from .pagination import AsyncPageIterator
 from .types import (
     AccountResponse,
+    BatchSalesResult,
     EventSearchItem,
     EventSearchPage,
     EventStatsPage,
     EventStatsSnapshot,
+    SalesPage,
+    SalesRow,
     UsageResponse,
 )
 
@@ -205,6 +210,13 @@ class AsyncSeatDataClient:
     async def get_sales_data(
         self, event_id: Optional[str] = None, event_id_sh: Optional[str] = None
     ) -> List[Dict[str, Any]]:
+        warnings.warn(
+            "get_sales_data() calls the v0.3 endpoint and returns sh rows only. "
+            "Use get_event_sales() for v1 sales, the source filter, and pagination. "
+            "This method will be removed in v2.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if not event_id and not event_id_sh:
             raise ValueError("Either event_id or event_id_sh must be provided")
         params: Dict[str, Any] = {}
@@ -216,6 +228,101 @@ class AsyncSeatDataClient:
             List[Dict[str, Any]],
             await self._transport.arequest_json("GET", "/api/v0.3/salesdata/get", params=params),
         )
+
+    async def get_event_sales(
+        self,
+        event_id: Optional[Union[int, str]] = None,
+        event_id_sh: Optional[Union[int, str]] = None,
+        limit: Optional[int] = None,
+        starting_after: Optional[str] = None,
+        source: Optional[str] = None,
+    ) -> SalesPage:
+        """Fetch one page of sales for an event.
+
+        Retries follow the client's max_retries setting, 3 by default.
+        Construct the client with max_retries=0 to disable them.
+
+        total_count and sources appear on the first page only.
+
+        See https://docs.seatdata.io/docs/api/ for pricing.
+        """
+        path_id, id_type = resolve_sales_id(event_id, event_id_sh)
+        params = build_event_sales_params(
+            limit=limit,
+            starting_after=starting_after,
+            source=source,
+            id_type=id_type,
+        )
+        return cast(
+            SalesPage,
+            await self._transport.arequest_json(
+                "GET", f"/api/v1/events/{path_id}/sales", params=params
+            ),
+        )
+
+    def iter_event_sales(
+        self,
+        event_id: Optional[Union[int, str]] = None,
+        event_id_sh: Optional[Union[int, str]] = None,
+        limit: Optional[int] = None,
+        source: Optional[str] = None,
+    ) -> AsyncPageIterator[SalesRow]:
+        """Walk every page of sales for an event.
+
+        source, limit, and the id pair are fixed for the life of the iterator.
+        Cursors are bound to the source they were issued under, so changing
+        source mid-walk is not supported. Read total_count and sources from
+        the iterator's first_page attribute after the first item.
+        """
+        resolve_sales_id(event_id, event_id_sh)
+
+        async def fetch(cursor: Optional[str]) -> Dict[str, Any]:
+            return cast(
+                Dict[str, Any],
+                await self.get_event_sales(
+                    event_id=event_id,
+                    event_id_sh=event_id_sh,
+                    limit=limit,
+                    starting_after=cursor,
+                    source=source,
+                ),
+            )
+
+        return AsyncPageIterator(fetch)
+
+    async def get_event_sales_batch(
+        self,
+        event_ids_sh: Optional[Sequence[Union[int, str]]] = None,
+        event_ids: Optional[Sequence[Union[int, str]]] = None,
+        source: Optional[str] = None,
+    ) -> BatchSalesResult:
+        """Fetch sales for up to 100 events in one request.
+
+        This call is never retried automatically, because the endpoint is not
+        idempotent: a timeout may mean the server processed the request and the
+        response was lost, not that nothing happened. A caller who accepts that
+        risk can retry in their own code.
+
+        A 402 response raises SeatDataPaymentError. A per-event failure is
+        data, and arrives as "payment_required" in errors.
+
+        results, errors, and sources are all keyed by the decimal string of
+        each id sent.
+
+        See https://docs.seatdata.io/docs/api/ for pricing.
+        """
+        payload = prepare_batch_payload(event_ids_sh, event_ids)
+        params: Dict[str, Any] = {}
+        if source is not None:
+            params["source"] = source
+        response = await self._transport.arequest_json(
+            "POST",
+            "/api/v1/events/sales/batch",
+            params=params,
+            json=payload,
+            retry_safe=False,
+        )
+        return normalize_batch_response(response)
 
     async def get_listings(
         self, event_id: Optional[str] = None, event_id_sh: Optional[str] = None

@@ -262,3 +262,13 @@ class TestAsyncSeatDataClient:
         assert not client._transport._async_client.is_closed
         await client.aclose()
         assert client._transport._async_client is None
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_get_sales_data_warns_and_names_the_replacement(self):
+        respx.get("https://seatdata.io/api/v0.3/salesdata/get").mock(
+            return_value=httpx.Response(200, json=[])
+        )
+        async with AsyncSeatDataClient(api_key="a" * 64) as client:
+            with pytest.warns(DeprecationWarning, match="get_event_sales"):
+                await client.get_sales_data(event_id="225220")

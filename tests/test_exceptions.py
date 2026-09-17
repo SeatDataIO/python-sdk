@@ -7,6 +7,7 @@ from seatdata.exceptions import (
     SeatDataNotFoundError,
     SeatDataInvalidRequestError,
     SeatDataSubscriptionError,
+    SeatDataPaymentError,
     SeatDataServerError,
     CursorExpiredError,
     SeatDataException,
@@ -26,6 +27,7 @@ class TestExceptionHierarchy:
             SeatDataNotFoundError,
             SeatDataInvalidRequestError,
             SeatDataSubscriptionError,
+            SeatDataPaymentError,
             SeatDataServerError,
             CursorExpiredError,
         ]:
@@ -91,3 +93,9 @@ class TestExceptionHierarchy:
         assert err.error_code == "invalid_api_key"
         assert err.status_code == 401
         assert err.response_body == {"error": {"type": "authentication_error"}}
+
+    def test_payment_error_importable_from_top_level_package(self):
+        import seatdata
+
+        assert seatdata.SeatDataPaymentError is SeatDataPaymentError
+        assert "SeatDataPaymentError" in seatdata.__all__

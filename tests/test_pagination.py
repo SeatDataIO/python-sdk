@@ -77,6 +77,40 @@ class TestPageIteratorSync:
         assert exc_info.value.items_yielded == 2
         assert exc_info.value.last_cursor == "c1"
 
+    def test_first_page_is_none_before_fetch(self):
+        fetch = make_pages({"data": [1], "has_more": False, "next_cursor": None})
+        it = PageIterator(fetch)
+        assert it.first_page is None
+
+    def test_first_page_captured_and_not_overwritten(self):
+        fetch = make_pages(
+            {"data": [1], "has_more": True, "next_cursor": "c1", "total_count": 2},
+            {"data": [2], "has_more": False, "next_cursor": None},
+        )
+        it = PageIterator(fetch)
+        assert list(it) == [1, 2]
+        assert it.first_page is not None
+        assert it.first_page["total_count"] == 2
+
+    def test_first_page_stays_none_when_first_fetch_raises(self):
+        def fetch(cursor):
+            raise SeatDataInvalidRequestError("bad request")
+
+        it = PageIterator(fetch)
+        with pytest.raises(SeatDataInvalidRequestError):
+            next(it)
+        assert it.first_page is None
+
+    def test_first_page_captured_when_first_page_is_empty(self):
+        fetch = make_pages(
+            {"data": [], "has_more": False, "next_cursor": None, "total_count": 0, "sources": []}
+        )
+        it = PageIterator(fetch)
+        assert list(it) == []
+        assert it.first_page is not None
+        assert it.first_page["total_count"] == 0
+        assert it.first_page["sources"] == []
+
 
 class TestAsyncPageIterator:
     @pytest.mark.asyncio
@@ -134,3 +168,52 @@ class TestAsyncPageIterator:
             await it.__anext__()
         assert exc_info.value.items_yielded == 2
         assert exc_info.value.last_cursor == "c1"
+
+    @pytest.mark.asyncio
+    async def test_async_first_page_captured(self):
+        from seatdata.pagination import AsyncPageIterator
+
+        pages_iter = iter(
+            [
+                {"data": [1], "has_more": True, "next_cursor": "c1", "total_count": 5},
+                {"data": [2], "has_more": False, "next_cursor": None},
+            ]
+        )
+
+        async def fetch(cursor):
+            return next(pages_iter)
+
+        it = AsyncPageIterator(fetch)
+        got = [item async for item in it]
+        assert got == [1, 2]
+        assert it.first_page["total_count"] == 5
+
+    @pytest.mark.asyncio
+    async def test_async_first_page_stays_none_when_first_fetch_raises(self):
+        from seatdata.pagination import AsyncPageIterator
+
+        async def fetch(cursor):
+            raise SeatDataInvalidRequestError("bad request")
+
+        it = AsyncPageIterator(fetch)
+        with pytest.raises(SeatDataInvalidRequestError):
+            await it.__anext__()
+        assert it.first_page is None
+
+    @pytest.mark.asyncio
+    async def test_async_first_page_captured_when_first_page_is_empty(self):
+        from seatdata.pagination import AsyncPageIterator
+
+        pages_iter = iter(
+            [{"data": [], "has_more": False, "next_cursor": None, "total_count": 0, "sources": []}]
+        )
+
+        async def fetch(cursor):
+            return next(pages_iter)
+
+        it = AsyncPageIterator(fetch)
+        got = [item async for item in it]
+        assert got == []
+        assert it.first_page is not None
+        assert it.first_page["total_count"] == 0
+        assert it.first_page["sources"] == []

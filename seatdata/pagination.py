@@ -19,6 +19,7 @@ class PageIterator(Generic[T], Iterator[T]):
         self._exhausted = False
         self._items_yielded = 0
         self._current_cursor: Optional[str] = None
+        self.first_page: Optional[Envelope] = None
 
     @property
     def current_cursor(self) -> Optional[str]:
@@ -41,6 +42,8 @@ class PageIterator(Generic[T], Iterator[T]):
             e.last_cursor = self._next_cursor
             raise
         self._current_cursor = self._next_cursor
+        if self.first_page is None:
+            self.first_page = page
         self._buffer = list(page.get(self._item_key, []))
         self._next_cursor = page.get("next_cursor")
         self._exhausted = not page.get("has_more", False)
@@ -64,6 +67,7 @@ class AsyncPageIterator(Generic[T]):
         self._exhausted = False
         self._items_yielded = 0
         self._current_cursor: Optional[str] = None
+        self.first_page: Optional[Envelope] = None
 
     @property
     def current_cursor(self) -> Optional[str]:
@@ -86,6 +90,8 @@ class AsyncPageIterator(Generic[T]):
             e.last_cursor = self._next_cursor
             raise
         self._current_cursor = self._next_cursor
+        if self.first_page is None:
+            self.first_page = page
         self._buffer = list(page.get(self._item_key, []))
         self._next_cursor = page.get("next_cursor")
         self._exhausted = not page.get("has_more", False)

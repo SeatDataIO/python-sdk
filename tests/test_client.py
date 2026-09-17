@@ -323,3 +323,35 @@ class TestSeatDataClient:
             warnings.simplefilter("always")
             client.event_request_status(job_id="x")
         assert any(issubclass(w.category, DeprecationWarning) for w in caught)
+
+    @respx.mock
+    def test_deprecation_warnings_name_v2_0(self):
+        import warnings
+
+        respx.post("https://seatdata.io/api/v0.4/events/event-request-add").mock(
+            return_value=httpx.Response(202, json={"job_id": "x"})
+        )
+        respx.get("https://seatdata.io/api/v0.4/events/event-request-status/x/").mock(
+            return_value=httpx.Response(200, json={"job_id": "x"})
+        )
+        respx.post("https://seatdata.io/api/v0.3.1/events/search").mock(
+            return_value=httpx.Response(200, json={"result_total": 0, "items": []})
+        )
+        client = SeatDataClient(api_key="a" * 64)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            client.event_request_add(search_query="X")
+            client.event_request_status(job_id="x")
+            client.search_events_legacy(event_name="X")
+        messages = [str(w.message) for w in caught if issubclass(w.category, DeprecationWarning)]
+        assert sum("removed in v2.0" in m for m in messages) == 3
+        assert not any("removed in v1.1" in m for m in messages)
+
+    @respx.mock
+    def test_get_sales_data_warns_and_names_the_replacement(self):
+        respx.get("https://seatdata.io/api/v0.3/salesdata/get").mock(
+            return_value=httpx.Response(200, json=[])
+        )
+        with SeatDataClient(api_key="a" * 64) as client:
+            with pytest.warns(DeprecationWarning, match="get_event_sales"):
+                client.get_sales_data(event_id="225220")

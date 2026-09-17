@@ -1,5 +1,6 @@
 from seatdata.types import (
     AccountResponse,
+    BatchSalesResult,
     Plan,
     RateLimitInfo,
     UsageResponse,
@@ -138,3 +139,96 @@ def test_parse_timestamp_invalid_raises():
 
     with pytest.raises(ValueError):
         parse_timestamp("not a timestamp")
+
+
+def test_batch_sales_result_shape():
+    result: BatchSalesResult = {
+        "results": {
+            "225220": [
+                {
+                    "source": "sh",
+                    "listing_id": 105294241,
+                    "all_in_price": None,
+                    "timestamp": 1757000000,
+                    "quantity": 2,
+                    "price": 100.0,
+                    "zone": "Lower Bowl",
+                    "section": "112",
+                    "row": "F",
+                }
+            ]
+        },
+        "errors": {"105288127": "not_found"},
+        "sources": {},
+    }
+    assert result["results"]["225220"][0]["quantity"] == 2
+    assert result["errors"]["105288127"] == "not_found"
+
+
+def test_sales_row_union_narrows_on_source():
+    from seatdata.types import SHSalesRow, VSSalesRow
+
+    sh: SHSalesRow = {
+        "source": "sh",
+        "listing_id": 105294241,
+        "all_in_price": None,
+        "timestamp": 1757000000,
+        "quantity": 2,
+        "price": 145.0,
+        "zone": "Lower Bowl",
+        "section": "112",
+        "row": "F",
+    }
+    vs: VSSalesRow = {
+        "source": "vs",
+        "listing_id": "vs-1",
+        "all_in_price": 188.5,
+        "timestamp": 1757000100,
+        "quantity": 1,
+        "price": 150.0,
+        "zone": "",
+        "section": "Lower Bowl 112",
+        "row": "F",
+        "norm_zone": "Lower Bowl",
+        "norm_section": "112",
+    }
+    assert sh["source"] == "sh"
+    assert vs["source"] == "vs"
+    assert sh["all_in_price"] is None
+    assert isinstance(vs["listing_id"], str)
+    assert "norm_zone" not in sh
+
+
+def test_sales_page_shape():
+    from seatdata.types import SalesPage
+
+    page: SalesPage = {
+        "event_id": 225220,
+        "data": [],
+        "has_more": False,
+        "next_cursor": None,
+        "total_count": 0,
+        "sources": [
+            {
+                "source": "sh",
+                "collecting_since": "2024-03-01",
+                "tracked_for_event": True,
+                "status": "ok",
+            },
+            {
+                "source": "vs",
+                "collecting_since": None,
+                "tracked_for_event": False,
+                "status": "ok",
+            },
+        ],
+    }
+    assert page["sources"][1]["tracked_for_event"] is False
+
+
+def test_batch_sales_result_carries_sources():
+    from seatdata.types import BatchSalesResult
+
+    result: BatchSalesResult = {"results": {}, "errors": {}, "sources": {}}
+    assert result["sources"] == {}
+    assert "sources" in BatchSalesResult.__required_keys__

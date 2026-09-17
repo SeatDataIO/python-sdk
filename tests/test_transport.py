@@ -8,6 +8,7 @@ from seatdata.exceptions import (
     SeatDataAuthError,
     SeatDataInvalidRequestError,
     SeatDataNotFoundError,
+    SeatDataPaymentError,
     SeatDataRateLimitError,
     SeatDataServerError,
     SeatDataSubscriptionError,
@@ -425,3 +426,107 @@ class TestAsyncTransport:
             assert t._async_client is None
         finally:
             t.close()
+
+
+class TestPaymentRequired:
+    @respx.mock
+    def test_402_envelope_with_unmapped_type_raises_payment_error(self, transport):
+        respx.get("https://seatdata.io/api/v1/x").mock(
+            return_value=httpx.Response(
+                402,
+                json={
+                    "error": {
+                        "type": "insufficient_balance",
+                        "code": "balance_exhausted",
+                        "message": "no balance",
+                    }
+                },
+            )
+        )
+        with pytest.raises(SeatDataPaymentError) as exc_info:
+            transport.request_json("GET", "/api/v1/x")
+        assert exc_info.value.status_code == 402
+
+    @respx.mock
+    def test_402_envelope_without_type_raises_payment_error(self, transport):
+        respx.get("https://seatdata.io/api/v1/x").mock(
+            return_value=httpx.Response(
+                402,
+                json={"error": {"code": "balance_exhausted", "message": "no balance"}},
+            )
+        )
+        with pytest.raises(SeatDataPaymentError) as exc_info:
+            transport.request_json("GET", "/api/v1/x")
+        assert exc_info.value.status_code == 402
+
+    @respx.mock
+    def test_402_envelope_with_payment_required_type(self, transport):
+        respx.get("https://seatdata.io/api/v1/x").mock(
+            return_value=httpx.Response(
+                402,
+                json={
+                    "error": {
+                        "type": "payment_required",
+                        "code": "payment_required",
+                        "message": "payment required",
+                    }
+                },
+            )
+        )
+        with pytest.raises(SeatDataPaymentError):
+            transport.request_json("GET", "/api/v1/x")
+
+    @respx.mock
+    def test_402_legacy_string_body(self, transport):
+        respx.get("https://seatdata.io/api/v1/x").mock(
+            return_value=httpx.Response(402, json={"error": "Payment required"})
+        )
+        with pytest.raises(SeatDataPaymentError, match="Payment required"):
+            transport.request_json("GET", "/api/v1/x")
+
+    @respx.mock
+    def test_402_non_json_body(self, transport):
+        respx.get("https://seatdata.io/api/v1/x").mock(
+            return_value=httpx.Response(402, text="Payment Required")
+        )
+        with pytest.raises(SeatDataPaymentError, match="Payment Required"):
+            transport.request_json("GET", "/api/v1/x")
+
+    @respx.mock
+    def test_402_is_not_retried(self):
+        t = _Transport(api_key="a" * 64, max_retries=3)
+        try:
+            route = respx.get("https://seatdata.io/api/v1/x").mock(
+                return_value=httpx.Response(
+                    402,
+                    json={"error": {"type": "payment_required", "code": "x", "message": "x"}},
+                )
+            )
+            with pytest.raises(SeatDataPaymentError):
+                t.request_json("GET", "/api/v1/x")
+            assert route.call_count == 1
+        finally:
+            t.close()
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_402_async_raises_payment_error_and_is_not_retried(self):
+        t = _Transport(api_key="a" * 64, max_retries=3)
+        try:
+            route = respx.get("https://seatdata.io/api/v1/x").mock(
+                return_value=httpx.Response(
+                    402,
+                    json={
+                        "error": {
+                            "type": "insufficient_balance",
+                            "code": "balance_exhausted",
+                            "message": "no balance",
+                        }
+                    },
+                )
+            )
+            with pytest.raises(SeatDataPaymentError):
+                await t.arequest_json("GET", "/api/v1/x")
+            assert route.call_count == 1
+        finally:
+            await t.aclose()

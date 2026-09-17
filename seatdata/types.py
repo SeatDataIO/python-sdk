@@ -1,5 +1,5 @@
-from typing import Dict, List, Optional
-from typing_extensions import NotRequired, TypedDict
+from typing import Dict, List, Optional, Union
+from typing_extensions import Literal, NotRequired, TypedDict
 
 
 class RateLimitInfo(TypedDict):
@@ -102,6 +102,57 @@ class EventStatsPage(TypedDict):
     next_cursor: Optional[str]
     available_zones: NotRequired[List[str]]
     total_count: NotRequired[int]
+
+
+class SourceBlock(TypedDict):
+    source: str
+    collecting_since: Optional[str]
+    tracked_for_event: bool
+    status: str
+
+
+class SHSalesRow(TypedDict):
+    source: Literal["sh"]
+    listing_id: int
+    all_in_price: None
+    timestamp: int
+    quantity: int
+    price: float
+    zone: str
+    section: str
+    row: str
+
+
+class VSSalesRow(TypedDict):
+    source: Literal["vs"]
+    listing_id: str
+    all_in_price: Optional[float]
+    timestamp: int
+    quantity: int
+    price: float
+    zone: str
+    section: str
+    row: str
+    norm_zone: str
+    norm_section: str
+
+
+SalesRow = Union[SHSalesRow, VSSalesRow]
+
+
+class SalesPage(TypedDict):
+    event_id: int
+    data: List[SalesRow]
+    has_more: bool
+    next_cursor: Optional[str]
+    total_count: NotRequired[int]
+    sources: NotRequired[List[SourceBlock]]
+
+
+class BatchSalesResult(TypedDict):
+    results: Dict[str, List[SalesRow]]
+    errors: Dict[str, str]
+    sources: Dict[str, List[SourceBlock]]
 
 
 class ErrorEnvelopeBody(TypedDict):
