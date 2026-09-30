@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.2.0] - UNRELEASED
+## [1.2.0] - 2026-09-30
 
 ### Changed
 - `get_listings()` on both clients calls `GET /api/v0.1.1/listings/get` instead of `GET /api/v0.1/listings/get`. The parameters and the billing do not change. The response gains `last_refresh_timestamp`: the Unix time of the last scan of the event, or `None` when no scan time is recorded.
