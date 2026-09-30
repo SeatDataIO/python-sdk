@@ -60,7 +60,7 @@ class TestSeatDataClient:
 
     @respx.mock
     def test_bad_request_error(self):
-        respx.get("https://seatdata.io/api/v0.1/listings/get").mock(
+        respx.get("https://seatdata.io/api/v0.1.1/listings/get").mock(
             return_value=httpx.Response(400, text="Missing required parameter")
         )
         client = SeatDataClient(api_key="a" * 64)
@@ -81,12 +81,36 @@ class TestSeatDataClient:
     @respx.mock
     def test_get_listings_success(self):
         test_data = {"listings": [{"id": "123", "price": 50}]}
-        respx.get("https://seatdata.io/api/v0.1/listings/get").mock(
+        respx.get("https://seatdata.io/api/v0.1.1/listings/get").mock(
             return_value=httpx.Response(200, json=test_data)
         )
         client = SeatDataClient(api_key="a" * 64)
         result = client.get_listings(event_id_sh="test_sh_id")
         assert result == test_data
+
+    @respx.mock
+    def test_get_listings_returns_the_scan_time(self):
+        test_data = {
+            "has_refreshed": 1,
+            "last_refresh_timestamp": 1790000000,
+            "listings": [{"listing_id": 7, "active": 1, "zone": "Upper", "price": 298.71}],
+        }
+        route = respx.get("https://seatdata.io/api/v0.1.1/listings/get").mock(
+            return_value=httpx.Response(200, json=test_data)
+        )
+        client = SeatDataClient(api_key="a" * 64)
+        result = client.get_listings(event_id="1358017")
+        assert result == test_data
+        assert route.calls.last.request.url.params["event_id"] == "1358017"
+
+    @respx.mock
+    def test_get_listings_passes_a_null_scan_time(self):
+        test_data = {"has_refreshed": 0, "last_refresh_timestamp": None, "listings": []}
+        respx.get("https://seatdata.io/api/v0.1.1/listings/get").mock(
+            return_value=httpx.Response(200, json=test_data)
+        )
+        client = SeatDataClient(api_key="a" * 64)
+        assert client.get_listings(event_id_sh="12345")["last_refresh_timestamp"] is None
 
     def test_get_sales_data_missing_params(self):
         client = SeatDataClient(api_key="a" * 64)

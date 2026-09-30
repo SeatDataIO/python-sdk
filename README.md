@@ -41,7 +41,7 @@ for snapshot in client.iter_event_stats(event_id=12345):
 
 # v0.x endpoints continue to work
 sales = client.get_sales_data(event_id="1234567")
-listings = client.get_listings(event_id="1234567")
+listings = client.get_listings(event_id="1234567")  # rows, and last_refresh_timestamp
 csv = client.download_daily_csv()  # latest day
 ```
 

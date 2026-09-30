@@ -113,11 +113,13 @@ def show_event_sales_batch(client, event_ids):
 
 
 def show_listings(client, event_id):
-    """GET /api/v0.1/listings/get"""
+    """GET /api/v0.1.1/listings/get"""
     listings = client.get_listings(event_id=str(event_id))
     rows = listings.get("listings", [])
-    print(f"  {len(rows)} live listings")
-    for listing in rows[:3]:
+    active = [row for row in rows if row.get("active") == 1]
+    print(f"  {len(rows)} listing rows, {len(active)} active")
+    print(f"  last scan (Unix time): {listings.get('last_refresh_timestamp')}")
+    for listing in active[:3]:
         print(f"    {listing.get('section')} row {listing.get('row')} ${listing.get('price')}")
 
 

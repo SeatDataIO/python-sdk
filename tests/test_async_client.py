@@ -213,12 +213,35 @@ class TestAsyncSeatDataClient:
     @pytest.mark.asyncio
     @respx.mock
     async def test_get_listings(self):
-        respx.get("https://seatdata.io/api/v0.1/listings/get").mock(
+        respx.get("https://seatdata.io/api/v0.1.1/listings/get").mock(
             return_value=httpx.Response(200, json={"listings": []})
         )
         async with AsyncSeatDataClient(api_key="a" * 64) as client:
             result = await client.get_listings(event_id="123")
             assert result == {"listings": []}
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_get_listings_returns_the_scan_time(self):
+        body = {"has_refreshed": 1, "last_refresh_timestamp": 1790000000, "listings": []}
+        route = respx.get("https://seatdata.io/api/v0.1.1/listings/get").mock(
+            return_value=httpx.Response(200, json=body)
+        )
+        async with AsyncSeatDataClient(api_key="a" * 64) as client:
+            result = await client.get_listings(event_id="1358017")
+        assert result["last_refresh_timestamp"] == 1790000000
+        assert route.calls.last.request.url.params["event_id"] == "1358017"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_get_listings_passes_a_null_scan_time(self):
+        body = {"has_refreshed": 0, "last_refresh_timestamp": None, "listings": []}
+        respx.get("https://seatdata.io/api/v0.1.1/listings/get").mock(
+            return_value=httpx.Response(200, json=body)
+        )
+        async with AsyncSeatDataClient(api_key="a" * 64) as client:
+            result = await client.get_listings(event_id_sh="12345")
+        assert result["last_refresh_timestamp"] is None
 
     @pytest.mark.asyncio
     @respx.mock

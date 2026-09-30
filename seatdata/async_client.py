@@ -327,6 +327,16 @@ class AsyncSeatDataClient:
     async def get_listings(
         self, event_id: Optional[str] = None, event_id_sh: Optional[str] = None
     ) -> Dict[str, Any]:
+        """Fetch every stored listing of one event.
+
+        Calls GET /api/v0.1.1/listings/get. The response holds three keys:
+
+        - has_refreshed: 1 when this call was billed as a pull, 0 when it was free.
+        - last_refresh_timestamp: the Unix time of the last scan of the event, or None.
+        - listings: every stored row of the event, active and inactive.
+
+        See https://docs.seatdata.io/docs/api/ for pricing.
+        """
         if not event_id and not event_id_sh:
             raise ValueError("Either event_id or event_id_sh must be provided")
         params: Dict[str, Any] = {}
@@ -336,7 +346,7 @@ class AsyncSeatDataClient:
             params["event_id_sh"] = event_id_sh
         return cast(
             Dict[str, Any],
-            await self._transport.arequest_json("GET", "/api/v0.1/listings/get", params=params),
+            await self._transport.arequest_json("GET", "/api/v0.1.1/listings/get", params=params),
         )
 
     async def download_daily_csv(self, date: Optional[str] = None) -> str:
